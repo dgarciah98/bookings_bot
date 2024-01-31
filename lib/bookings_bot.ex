@@ -1,0 +1,2 @@
+defmodule BookingsBot do
+end
