@@ -68,14 +68,21 @@ defmodule BookingsBot.Utils do
     ]
   end
 
-  defp generate_initial_keyboard(buttons, -1), do: buttons
+  defp generate_initial_keyboard(buttons, 0), do: buttons
 
   defp generate_initial_keyboard(buttons, button_num) do
+    number =
+      Enum.reduce(
+        String.codepoints(Integer.to_string(button_num)),
+        "",
+        fn s, acc -> acc <> s <> "⃣" end
+      )
+
     generate_initial_keyboard(
       [
         inline_single_button_row(
-          Integer.to_string(button_num + 1) <> "⃣ Plaza Libre",
-          "place" <> Integer.to_string(button_num)
+          number <> " Plaza Libre",
+          "place" <> Integer.to_string(button_num - 1)
         )
         | buttons
       ],
