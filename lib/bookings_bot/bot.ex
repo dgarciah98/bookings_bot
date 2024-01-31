@@ -25,8 +25,14 @@ defmodule BookingsBot.Bot do
   def bot(), do: @bot
 
   def init(_opts) do
-    :ets.new(:chat_data, [:set, :public, :named_table, {:write_concurrency, true}, {:read_concurrency, true}])
-	
+    :ets.new(:chat_data, [
+      :set,
+      :public,
+      :named_table,
+      {:write_concurrency, true},
+      {:read_concurrency, true}
+    ])
+
     ExGram.set_my_commands!([
       %BotCommand{
         command: "somebodyscream",
@@ -96,7 +102,12 @@ defmodule BookingsBot.Bot do
         _
       ) do
     ExGram.delete_message(msg.chat.id, msg.message_id)
-    :ets.insert(:chat_data, {msg.chat.id, %{chat_name: msg.chat.title, thread_id: thread_id, topic_name: topic.name, bookings: []}})
+
+    :ets.insert(
+      :chat_data,
+      {msg.chat.id,
+       %{chat_name: msg.chat.title, thread_id: thread_id, topic_name: topic.name, bookings: []}}
+    )
 
     ExGram.send_message(
       msg.from.id,
@@ -138,8 +149,8 @@ defmodule BookingsBot.Bot do
           opts = [
             reply_markup: create_inline(Utils.generate_initial_keyboard()),
             protect_content: true
-        ]
-		
+          ]
+
           [{chat_id, data}] = :ets.match_object(:chat_data, :_)
 
           {:ok, msg} =
@@ -194,18 +205,18 @@ defmodule BookingsBot.Bot do
             end)
 
           :ets.insert(
-			:chat_data,
+            :chat_data,
             {chat_id,
-			 %{chat_name: data.chat_name,
-			   thread_id: data.thread_id,
-			   topic_name: data.topic_name,
-			   bookings:
-			   case Enum.find(chat_data, fn elem -> elem.date == new_data.date end) do
-				 nil -> [new_data | chat_data]
-				 _ -> chat_data
-			   end
-			 }
-			}
+             %{
+               chat_name: data.chat_name,
+               thread_id: data.thread_id,
+               topic_name: data.topic_name,
+               bookings:
+                 case Enum.find(chat_data, fn elem -> elem.date == new_data.date end) do
+                   nil -> [new_data | chat_data]
+                   _ -> chat_data
+                 end
+             }}
           )
 
           {:ok, msg}
@@ -307,23 +318,25 @@ defmodule BookingsBot.Bot do
 
   # Bookings list
   def handle(
-    {:callback_query, %{data: "place" <> place_pos, message: msg, from: from}},
-    context
-  ) do
-	[{chat_id, data}] = :ets.match_object(:chat_data, :_)
-	"PLAZAS PARA: " <> date = msg.text
-	[date | _] = date |> String.split(" \n")
+        {:callback_query, %{data: "place" <> place_pos, message: msg, from: from}},
+        context
+      ) do
+    [{chat_id, data}] = :ets.match_object(:chat_data, :_)
+    "PLAZAS PARA: " <> date = msg.text
+    [date | _] = date |> String.split(" \n")
 
-	key = "place" <> place_pos
-	kb = Enum.find(data.bookings, fn b -> b.message_id == msg.message_id end).reply_markup
-	[number | _] = kb[key] |> String.split(" ")
-	new_kb = Map.put(kb, key, Utils.select_button_text(kb[key], number, from, msg.chat.id))
-	bookings = Enum.map(data.bookings, fn b ->
-	  if b.message_id == msg.message_id, do: Map.put(b, :reply_markup, new_kb), else: b
-	end)
-	:ets.insert(:chat_data, {chat_id, Map.put(data, :bookings, bookings)})
-	kb = Utils.convert_map_to_kb(new_kb)
-	edit(context, :inline, Utils.generate_message(date, kb), reply_markup: create_inline(kb))
+    key = "place" <> place_pos
+    kb = Enum.find(data.bookings, fn b -> b.message_id == msg.message_id end).reply_markup
+    [number | _] = kb[key] |> String.split(" ")
+    new_kb = Map.put(kb, key, Utils.select_button_text(kb[key], number, from, msg.chat.id))
 
+    bookings =
+      Enum.map(data.bookings, fn b ->
+        if b.message_id == msg.message_id, do: Map.put(b, :reply_markup, new_kb), else: b
+      end)
+
+    :ets.insert(:chat_data, {chat_id, Map.put(data, :bookings, bookings)})
+    kb = Utils.convert_map_to_kb(new_kb)
+    edit(context, :inline, Utils.generate_message(date, kb), reply_markup: create_inline(kb))
   end
 end

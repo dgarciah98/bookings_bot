@@ -12,12 +12,12 @@ defmodule BookingsBot.InlineKeyboards do
     [{_, chat_data}] = :ets.match_object(:chat_data, {:_, :_})
 
     for data <- Enum.sort_by(chat_data.bookings, & &1.date) do
-	  [
+      [
         %{
-		  text: format_date(data.date),
-		  url: data.message_link
+          text: format_date(data.date),
+          url: data.message_link
         }
-	  ]
+      ]
     end ++ [inline_stepback("menu_reservas")]
   end
 

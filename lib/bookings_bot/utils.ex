@@ -129,14 +129,15 @@ defmodule BookingsBot.Utils do
         _ -> "DISPONIBLE"
       end
   end
-  
+
   def convert_kb_to_map(msg) do
-	msg.reply_markup.inline_keyboard |> Enum.reduce(%{}, fn [e], acc -> Map.merge(acc, %{e.callback_data => e.text}) end)
+    msg.reply_markup.inline_keyboard
+    |> Enum.reduce(%{}, fn [e], acc -> Map.merge(acc, %{e.callback_data => e.text}) end)
   end
-  
+
   def convert_map_to_kb(map) do
-	for key <- Map.keys map do [%{text: map[key], callback_data: key}] end
+    for key <- Map.keys(map) do
+      [%{text: map[key], callback_data: key}]
+    end
   end
-
 end
-
