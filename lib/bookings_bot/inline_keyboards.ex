@@ -1,24 +1,24 @@
 defmodule BookingsBot.InlineKeyboards do
   import BookingsBot.Utils
 
-  defp inline_stepback do
+  defp inline_stepback(atras) do
     [
-      inline_button("↩ Atrás", "menu_reservas"),
+      inline_button("↩ Atrás", atras),
       inline_button("❎ Cerrar", "close")
     ]
   end
 
   def search_booking_keyboard do
-    [{_, _, _, _, chat_data}] = :ets.match_object(:chat_data, {:_, :_, :_, :_, :_})
+    [{_, chat_data}] = :ets.match_object(:chat_data, {:_, :_})
 
-    for data <- Enum.sort_by(chat_data, & &1.date) do
-      [
+    for data <- Enum.sort_by(chat_data.bookings, & &1.date) do
+	  [
         %{
-          text: format_date(data.date),
-          url: data.message_link
+		  text: format_date(data.date),
+		  url: data.message_link
         }
-      ]
-    end ++ [inline_stepback()]
+	  ]
+    end ++ [inline_stepback("menu_reservas")]
   end
 
   def create_booking_keyboard do
@@ -29,30 +29,30 @@ defmodule BookingsBot.InlineKeyboards do
       ],
       inline_single_button_row("Fin de semana", "plazas_finde"),
       inline_single_button_row("Fin de semana + Viernes", "plazas_completo"),
-      inline_stepback()
+      inline_stepback("menu_reservas")
     ]
   end
 
   def arcade_cabs_keyboard do
     [
-      inline_stepback()
+      inline_stepback("main_menu")
     ]
   end
 
   def how_to_play_keyboard do
     [
-      inline_stepback()
+      inline_stepback("main_menu")
     ]
   end
 
   def contacts_keyboard do
     [
-      inline_stepback()
+      inline_stepback("main_menu")
     ]
   end
 
   def bookings_menu_keyboard(user_id) do
-    [{chat_id, _, _, _, _}] = :ets.match_object(:chat_data, {:_, :_, :_, :_, :_})
+    [{chat_id, _}] = :ets.match_object(:chat_data, {:_, :_})
 
     [
       [
@@ -69,7 +69,7 @@ defmodule BookingsBot.InlineKeyboards do
               []
           end
       ],
-      inline_stepback()
+      inline_stepback("main_menu")
     ]
   end
 
