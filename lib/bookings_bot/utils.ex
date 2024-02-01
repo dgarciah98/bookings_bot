@@ -91,7 +91,8 @@ defmodule BookingsBot.Utils do
   end
 
   def generate_initial_keyboard do
-    generate_initial_keyboard([], ExGram.Config.get(:bookings_bot, :max_bookings))
+    [{:max_bookings, max_bookings}] = :ets.lookup(:bookings_config, :max_bookings)
+    generate_initial_keyboard([], max_bookings)
   end
 
   defp count_free_places([], count), do: count
@@ -136,7 +137,7 @@ defmodule BookingsBot.Utils do
   end
 
   def convert_map_to_kb(map) do
-    for key <- Map.keys(map) do
+    for key <- Enum.sort_by(Map.keys(map), &String.to_integer(String.replace(&1, "place", ""))) do
       [%{text: map[key], callback_data: key}]
     end
   end
