@@ -86,13 +86,8 @@ defmodule BookingsBot.Bot do
     end
   end
 
-  def handle({:command, :somebodyscream, %{from: from}}, _) do
-    send_start_message(from.id)
-  end
-
-  def handle({:command, "sanbaiicecream", %{from: from}}, _) do
-    send_start_message(from.id)
-  end
+  def handle({:command, :somebodyscream, %{from: from}}, _), do: send_start_message(from.id)
+  def handle({:command, "sanbaiicecream", %{from: from}}, _), do: send_start_message(from.id)
 
   def handle(
         {:command, :setbookingschannel,
@@ -280,6 +275,13 @@ defmodule BookingsBot.Bot do
         _
       ) do
     send_bookings_message("sabado, domingo", chat.id, msg_id)
+  end
+
+  def handle(
+        {:callback_query, %{data: "plazas_completo", message: %{message_id: msg_id, chat: chat}}},
+        _
+      ) do
+    send_bookings_message("viernes, sabado, domingo", chat.id, msg_id)
   end
 
   def handle({:callback_query, %{data: "buscar_reservas"}}, context) do
