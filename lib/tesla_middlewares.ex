@@ -7,6 +7,7 @@ defmodule TeslaMiddlewares do
       max_delay: 20_000,
       should_retry: fn
         {:ok, %{status: status}} when status in [429] -> true
+		_ -> false
       end
     }
   end
