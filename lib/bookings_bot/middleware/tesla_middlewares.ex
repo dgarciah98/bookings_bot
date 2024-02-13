@@ -1,4 +1,4 @@
-defmodule TeslaMiddlewares do
+defmodule BookingsBot.TeslaMiddlewares do
   def retry() do
     {
       Tesla.Middleware.Retry,

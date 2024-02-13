@@ -1,12 +1,12 @@
 defmodule BookingsBot.InlineKeyboards do
   import BookingsBot.Utils
 
-  defp inline_stepback(atras) do
-    [
-      inline_button("↩ Atrás", atras),
-      inline_button("❎ Cerrar", "close")
-    ]
-  end
+  defp inline_stepback(atras),
+    do:
+      inline_multi_button_row(
+        ["↩ Atrás", "❎ Cerrar"],
+        [atras, "close"]
+      )
 
   def search_booking_keyboard do
     [{_, chat_data}] = :ets.match_object(:chat_data, {:_, :_})
@@ -21,35 +21,22 @@ defmodule BookingsBot.InlineKeyboards do
     end ++ [inline_stepback("menu_reservas")]
   end
 
-  def create_booking_keyboard do
-    [
-      [
-        inline_button("Elegir día individual", "plazas_individual"),
-        inline_button("Elegir fecha concreta", "plazas_fecha")
-      ],
+  def create_booking_keyboard,
+    do: [
+      inline_multi_button_row(
+        ["Elegir día individual", "Elegir fecha concreta"],
+        ["plazas_individual", "plazas_fecha"]
+      ),
       inline_single_button_row("Fin de semana", "plazas_finde"),
       inline_single_button_row("Fin de semana + Viernes", "plazas_completo"),
       inline_stepback("menu_reservas")
     ]
-  end
 
-  def arcade_cabs_keyboard do
-    [
-      inline_stepback("main_menu")
-    ]
-  end
+  def arcade_cabs_keyboard, do: [inline_stepback("main_menu")]
 
-  def how_to_play_keyboard do
-    [
-      inline_stepback("main_menu")
-    ]
-  end
+  def how_to_play_keyboard, do: [inline_stepback("main_menu")]
 
-  def contacts_keyboard do
-    [
-      inline_stepback("main_menu")
-    ]
-  end
+  def contacts_keyboard, do: [inline_stepback("main_menu")]
 
   def bookings_menu_keyboard(user_id) do
     [{chat_id, _}] = :ets.match_object(:chat_data, {:_, :_})
@@ -73,13 +60,12 @@ defmodule BookingsBot.InlineKeyboards do
     ]
   end
 
-  def start_keyboard do
-    [
+  def start_keyboard,
+    do: [
       inline_single_button_row("Reservas", "menu_reservas"),
       inline_single_button_row("Máquinas arcade", "menu_maquinas"),
       inline_single_button_row("Cómo jugar", "menu_jugar"),
       inline_single_button_row("Contacto", "menu_contacto"),
       inline_single_button_row("❎ Cerrar", "close")
     ]
-  end
 end

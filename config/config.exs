@@ -5,7 +5,7 @@ config :ex_gram,
 
 config :ex_gram, ExGram.Adapter.Tesla,
   middlewares: [
-    {TeslaMiddlewares, :retry, []}
+    {BookingsBot.TeslaMiddlewares, :retry, []}
   ]
 
 config :bookings_bot,
