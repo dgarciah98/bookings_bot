@@ -1,4 +1,6 @@
 defmodule BookingsBot.Utils do
+  @admin_status ["creator", "administrator"]
+
   def normalize_string(string) do
     string
     |> String.downcase()
@@ -30,43 +32,34 @@ defmodule BookingsBot.Utils do
        else: {:error, "Not a weekday"}
   end
 
-  def select_button_text(text, number, from, chat_id) do
-    if String.contains?(text, "Plaza Libre") do
-      number <> " " <> from.first_name <> " (@" <> from.username <> ")"
-    else
-      {:ok, member} = ExGram.get_chat_member(chat_id, from.id)
+  def select_button_text(text, number, from) do
+    case String.contains?(text, "Plaza Libre") do
+      true ->
+        number <> " " <> from.first_name <> " (@" <> from.username <> ")"
 
-      if String.contains?(text, from.username) or
-           (member.status == "creator" or member.status == "administrator"),
-         do: number <> " Plaza Libre",
-         else: text
+      _ ->
+        number <> " Plaza Libre"
     end
   end
 
-  def inline_button(text, callback) do
-    %{
+  def inline_button(text, callback),
+    do: %{
       text: text,
       callback_data: callback
     }
-  end
 
-  def inline_single_button_row(text, callback) do
-    [
-      inline_button(text, callback)
-    ]
-  end
+  def inline_single_button_row(text, callback), do: [inline_button(text, callback)]
 
-  def inline_multi_button_row([text | texts], [callback | callbacks])
-      when length(texts) == length(callbacks) do
-    [
-      inline_button(text, callback)
-      | if length(texts) == 0 and length(callbacks) == 0 do
-          []
-        else
-          inline_multi_button_row(texts, callbacks)
-        end
-    ]
-  end
+  defp inline_multi_button_row_rec(texts, callbacks) when texts == callbacks, do: []
+
+  defp inline_multi_button_row_rec([text | texts], [callback | callbacks])
+       when length(texts) == length(callbacks),
+       do: [
+         inline_button(text, callback)
+         | inline_multi_button_row(texts, callbacks)
+       ]
+
+  def inline_multi_button_row(texts, callbacks), do: inline_multi_button_row_rec(texts, callbacks)
 
   defp generate_initial_keyboard(buttons, 0), do: buttons
 
