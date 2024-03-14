@@ -23,6 +23,29 @@ defmodule BookingsBot.MenuMessages do
     Si hay algún día disponible, se mostrará a continuación y al pincharlo se te redirigirá al mensaje de la reserva al pinchar en el día en concreto\\.
     """
 
+  def delete_booking_message,
+    do: """
+    *BORRAR RESERVAS*
+    Aquí puedes borrar los días de reserva disponibles\\.
+    Si hay algún día disponible, se mostrará a continuación y al pincharlo se borrará el mensaje de la reserva en el chat donde se mandó\\.
+    """
+
+  def commands_message do
+    {:ok, commands} =
+      ExGram.get_my_commands(
+        scope: %ExGram.Model.BotCommandScopeAllChatAdministrators{type: "all_chat_administrators"}
+      )
+
+    """
+    *COMANDOS*
+    Aquí puedes consultar todos los comandos disponibles para administradores\\.
+    \¡Úsalos bien\\!
+    """ <>
+      Enum.reduce(commands, "", fn command, acc ->
+        acc <> "`/" <> command.command <> "` \\- " <> command.description <> "\n"
+      end)
+  end
+
   def arcade_cabs_message,
     do: """
     *NUESTRAS MÁQUINAS*

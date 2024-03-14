@@ -3,7 +3,12 @@ defmodule BookingsBot.Middleware.Admins do
   alias ExGram.Cnt
   import ExGram.Dsl
 
-  @admin_commands ["/newlist", "/setbookingschannel", "/setmaxbookings", "/setmaxbookingsperuser"]
+  @admin_commands [
+    "/newlist",
+    "/setbookingschannel",
+    "/setmaxbookings",
+    "/setmaxbookingsperuser"
+  ]
   @admin_status ["creator", "administrator"]
 
   def call(%Cnt{update: %{message: %{text: text} = msg} = update} = cnt, _)

@@ -9,11 +9,11 @@ defmodule BookingsBot.Middleware.ModifyBooking do
         %Cnt{update: %{callback_query: %{data: "place" <> number} = callback} = update} = cnt,
         _
       ) do
-    case :ets.match_object(:chat_data, :_) do
+    case :ets.lookup(:chat_data, :bookings_channel) do
       [] ->
         %{cnt | halted: true}
 
-      [{_, data}] ->
+      [{:bookings_channel, data}] ->
         {:ok, %{id: id, username: user}} = extract_user(update)
 
         kb =
@@ -26,10 +26,11 @@ defmodule BookingsBot.Middleware.ModifyBooking do
              {:ok, %{status: status}} <- ExGram.get_chat_member(callback.message.chat.id, id) do
           [{:admins, admins}] = :ets.lookup(:bookings_config, :admins)
 
-          with false <- user in admins,
+          with {:default_admin, false} <- {:default_admin, user in admins},
                true <- status in @admin_status do
             cnt
           else
+            {:default_admin, true} -> cnt
             _ -> %{cnt | halted: true}
           end
         else

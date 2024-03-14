@@ -48,7 +48,24 @@ defmodule BookingsBot.Utils do
       callback_data: callback
     }
 
+  def inline_admin_button(text, callback, user_id) do
+    [{:bookings_channel, data}] = :ets.lookup(:chat_data, :bookings_channel)
+
+    with {:ok, member} <- ExGram.get_chat_member(data.chat_id, user_id),
+         true <- member.status in @admin_status do
+      %{
+        text: text,
+        callback_data: callback
+      }
+    else
+      _ -> %{}
+    end
+  end
+
   def inline_single_button_row(text, callback), do: [inline_button(text, callback)]
+
+  def inline_single_button_row(text, callback, user_id),
+    do: [inline_admin_button(text, callback, user_id)]
 
   defp inline_multi_button_row_rec(texts, callbacks) when texts == callbacks, do: []
 
@@ -103,14 +120,7 @@ defmodule BookingsBot.Utils do
   def generate_message(date, kb) do
     free_places = count_free_places(kb)
 
-    "PLAZAS PARA: " <>
-      case is_binary(date) do
-        true -> date
-        false -> format_date(date)
-      end <>
-      " \nPLAZAS LIBRES: " <>
-      Integer.to_string(count_free_places(kb)) <>
-      "\n[" <>
+    "[" <>
       case free_places do
         x when x in 0..1 -> "🔴"
         x when x in 2..3 -> "🟡"
@@ -121,7 +131,14 @@ defmodule BookingsBot.Utils do
         0 -> "COMPLETO"
         1 -> "ÚLTIMA PLAZA"
         _ -> "DISPONIBLE"
-      end
+      end <>
+      "\nPLAZAS PARA: " <>
+      case is_binary(date) do
+        true -> date
+        false -> format_date(date)
+      end <>
+      "\nPLAZAS LIBRES: " <>
+      Integer.to_string(count_free_places(kb))
   end
 
   def convert_kb_to_map(msg) do
