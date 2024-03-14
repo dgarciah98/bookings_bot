@@ -4,7 +4,7 @@ defmodule BookingsBot.Bot do
   use ExGram.Bot,
     name: @bot
 
-  # setup_commands: true
+  # 	setup_commands: true
 
   alias ExGram.Model.BotCommand
   alias ExGram.Model.BotCommandScopeAllChatAdministrators
@@ -16,8 +16,9 @@ defmodule BookingsBot.Bot do
   middleware(BookingsBot.Middleware.Admins)
   middleware(BookingsBot.Middleware.ModifyBooking)
 
+  command("start", description: "Abre un menú en un chat privado")
   command("somebodyscream", description: "Abre un menú en un chat privado")
-  command("saibaiicecream", description: "Abre un menú en un chat privado")
+  command("sanbaiicecream", description: "Abre un menú en un chat privado")
   command("newlist", description: "Create a new list of places for a given day")
 
   command("setbookingschannel",
@@ -90,38 +91,38 @@ defmodule BookingsBot.Bot do
   def send_start_message(chat_id, msg_id, user_id) do
     ExGram.delete_message(chat_id, msg_id)
 
-    case :ets.match_object(:chat_data, :_) do
-      [{chat_id, _}] ->
+    case :ets.lookup(:chat_data, :bookings_channel) do
+      [{:bookings_channel, %{chat_id: chat_id}}] ->
         case ExGram.get_chat_member(chat_id, user_id) do
           {:ok, _} ->
             ExGram.send_message(
               user_id,
               MenuMessages.main_menu_message(),
-              reply_markup: create_inline(InlineKeyboards.start_keyboard()),
-              protect_content: true
+              reply_markup: create_inline(InlineKeyboards.start_keyboard(user_id))
             )
 
           {:error, _} ->
             ExGram.send_message(
               user_id,
-              MenuMessages.invalid_member_message(),
-              protect_content: true
+              MenuMessages.invalid_member_message()
             )
         end
 
       _ ->
         ExGram.send_message(
           user_id,
-          MenuMessages.invalid_member_message(),
-          protect_content: true
+          MenuMessages.invalid_member_message()
         )
     end
   end
 
+  def handle({:command, :start, %{from: from, chat: chat, message_id: msg_id}}, _),
+    do: send_start_message(chat.id, msg_id, from.id)
+
   def handle({:command, :somebodyscream, %{from: from, chat: chat, message_id: msg_id}}, _),
     do: send_start_message(chat.id, msg_id, from.id)
 
-  def handle({:command, "sanbaiicecream", %{from: from, chat: chat, message_id: msg_id}}, _),
+  def handle({:command, :sanbaiicecream, %{from: from, chat: chat, message_id: msg_id}}, _),
     do: send_start_message(chat.id, msg_id, from.id)
 
   def handle(
@@ -135,14 +136,19 @@ defmodule BookingsBot.Bot do
 
     :ets.insert(
       :chat_data,
-      {msg.chat.id,
-       %{chat_name: msg.chat.title, thread_id: thread_id, topic_name: topic.name, bookings: []}}
+      {:bookings_channel,
+       %{
+         chat_id: msg.chat.id,
+         chat_name: msg.chat.title,
+         thread_id: thread_id,
+         topic_name: topic.name,
+         bookings: []
+       }}
     )
 
     ExGram.send_message(
       msg.from.id,
-      "Las reservas se mandarán al canal " <> topic.name <> " del grupo " <> msg.chat.title,
-      protect_content: true
+      "Las reservas se mandarán al canal " <> topic.name <> " del grupo " <> msg.chat.title
     )
   end
 
@@ -156,31 +162,20 @@ defmodule BookingsBot.Bot do
     :ets.insert(:bookings_config, {:max_bookings_per_user, String.to_integer(msg.text)})
   end
 
-  def handle({:inline_query, %{query: _}}, context),
-    do:
-      answer_inline_query(
-        context,
-        [
-          %ExGram.Model.InlineQueryResultArticle{
-            type: "article",
-            id: "start_convo",
-            title: "Hablar con Bot de Nextage Madrid",
-            description:
-              "Inicia una conversación conmigo para consultar información sobre Nextage",
-            input_message_content: %ExGram.Model.InputTextMessageContent{
-              message_text:
-                case :rand.uniform(100) do
-                  n when n <= 30 -> "/sanbaiicecream"
-                  _ -> "/somebodyscream"
-                end
-            }
-          }
-        ],
-        is_personal: true
-      )
+  def handle({:inline_query, %{query: _}}, context) do
+    answer_inline_query(
+      context,
+      [],
+      is_personal: true,
+      button: %ExGram.Model.InlineQueryResultsButton{
+        text: "¡Habla con nuestro bot!",
+        start_parameter: "bot"
+      }
+    )
+  end
 
-  defp send_bookings_message(text, chat_id, msg_id, thread_id \\ nil) do
-    ExGram.delete_message(chat_id, msg_id)
+  defp send_bookings_message(text, chat_id, msg_id \\ nil, thread_id \\ nil) do
+    if !is_nil(msg_id), do: ExGram.delete_message(chat_id, msg_id)
 
     text
     |> String.split(~r{[,\s]}, trim: true)
@@ -188,15 +183,14 @@ defmodule BookingsBot.Bot do
       &case Utils.search_next_day(&1) do
         {:ok, date} ->
           opts = [
-            reply_markup: create_inline(Utils.generate_initial_keyboard()),
-            protect_content: true
+            reply_markup: create_inline(Utils.generate_initial_keyboard())
           ]
 
-          [{chat_id, data}] = :ets.match_object(:chat_data, :_)
+          [{:bookings_channel, data}] = :ets.lookup(:chat_data, :bookings_channel)
 
           {:ok, msg} =
             ExGram.send_message(
-              chat_id,
+              data.chat_id,
               Utils.generate_message(date, Utils.generate_initial_keyboard()),
               if data.thread_id != nil do
                 [{:message_thread_id, data.thread_id} | opts]
@@ -247,17 +241,15 @@ defmodule BookingsBot.Bot do
 
           :ets.insert(
             :chat_data,
-            {chat_id,
-             %{
-               chat_name: data.chat_name,
-               thread_id: data.thread_id,
-               topic_name: data.topic_name,
-               bookings:
-                 case Enum.find(chat_data, fn elem -> elem.date == new_data.date end) do
-                   nil -> [new_data | chat_data]
-                   _ -> chat_data
-                 end
-             }}
+            {:bookings_channel,
+             Map.put(
+               data,
+               :bookings,
+               case Enum.find(chat_data, fn elem -> elem.date == new_data.date end) do
+                 nil -> [new_data | chat_data]
+                 _ -> chat_data
+               end
+             )}
           )
 
           {:ok, msg}
@@ -267,9 +259,9 @@ defmodule BookingsBot.Bot do
             chat_id,
             "El dia que has introducido (" <> &1 <> ") no es un día, al menos en España",
             if thread_id != nil do
-              [{:message_thread_id, thread_id}, {:protect_content, true}]
+              [{:message_thread_id, thread_id}]
             else
-              [{:protect_content, true}]
+              []
             end
           )
       end
@@ -280,7 +272,8 @@ defmodule BookingsBot.Bot do
         {:command, :newlist,
          %{text: text, message_id: msg_id, message_thread_id: thread_id, chat: chat}},
         _
-      ),
+      )
+      when not is_nil(thread_id),
       do: send_bookings_message(text, chat.id, msg_id, thread_id)
 
   def handle({:command, :newlist, %{text: text, message_id: msg_id, chat: chat}}, _),
@@ -288,10 +281,10 @@ defmodule BookingsBot.Bot do
 
   # Main menu
 
-  def handle({:callback_query, %{data: "main_menu"}}, context),
+  def handle({:callback_query, %{data: "main_menu", from: from}}, context),
     do:
       edit(context, :inline, MenuMessages.main_menu_message(),
-        reply_markup: create_inline(InlineKeyboards.start_keyboard())
+        reply_markup: create_inline(InlineKeyboards.start_keyboard(from.id))
       )
 
   def handle({:callback_query, %{data: "close", message: msg}}, context), do: delete(context, msg)
@@ -313,22 +306,52 @@ defmodule BookingsBot.Bot do
       )
 
   def handle(
-        {:callback_query, %{data: "plazas_finde", message: %{message_id: msg_id, chat: chat}}},
+        {:callback_query, %{data: "plazas_finde", message: %{chat: chat}}},
         _
       ),
-      do: send_bookings_message("sabado, domingo", chat.id, msg_id)
+      do: send_bookings_message("sabado, domingo", chat.id)
 
   def handle(
-        {:callback_query, %{data: "plazas_completo", message: %{message_id: msg_id, chat: chat}}},
+        {:callback_query, %{data: "plazas_completo", message: %{chat: chat}}},
         _
       ),
-      do: send_bookings_message("viernes, sabado, domingo", chat.id, msg_id)
+      do: send_bookings_message("viernes, sabado, domingo", chat.id)
 
   def handle({:callback_query, %{data: "buscar_reservas"}}, context),
     do:
       edit(context, :inline, MenuMessages.search_booking_message(),
         parse_mode: "MarkdownV2",
         reply_markup: create_inline(InlineKeyboards.search_booking_keyboard())
+      )
+
+  def handle({:callback_query, %{data: "borrar_reservas"}}, context),
+    do:
+      edit(context, :inline, MenuMessages.delete_booking_message(),
+        parse_mode: "MarkdownV2",
+        reply_markup: create_inline(InlineKeyboards.delete_booking_keyboard())
+      )
+
+  def handle({:callback_query, %{data: "https://t.me/c/" <> ids}}, context) do
+    [{:bookings_channel, data}] = :ets.lookup(:chat_data, :bookings_channel)
+    [msg_id] = ids |> String.split("/") |> tl |> tl
+    msg_id = String.to_integer(msg_id)
+    ExGram.delete_message(data.chat_id, msg_id)
+    bookings = Enum.reject(data.bookings, fn b -> b.message_id == msg_id end)
+    :ets.insert(:chat_data, {:bookings_channel, %{data | bookings: bookings}})
+
+    edit(context, :inline, MenuMessages.delete_booking_message(),
+      parse_mode: "MarkdownV2",
+      reply_markup: create_inline(InlineKeyboards.delete_booking_keyboard())
+    )
+  end
+
+  # Admin commands
+
+  def handle({:callback_query, %{data: "menu_comandos"}}, context),
+    do:
+      edit(context, :inline, MenuMessages.commands_message(),
+        parse_mode: "MarkdownV2",
+        reply_markup: create_inline(InlineKeyboards.commands_keyboard())
       )
 
   # Arcade cabs
@@ -363,7 +386,7 @@ defmodule BookingsBot.Bot do
         {:callback_query, %{data: "place" <> place_pos, message: msg, from: from}},
         context
       ) do
-    [{chat_id, data}] = :ets.match_object(:chat_data, :_)
+    [{:bookings_channel, data}] = :ets.lookup(:chat_data, :bookings_channel)
 
     [{:max_bookings_per_user, max_bookings_per_user}] =
       :ets.lookup(:bookings_config, :max_bookings_per_user)
@@ -376,15 +399,15 @@ defmodule BookingsBot.Bot do
 
     if Enum.count(Map.values(new_kb), fn b -> String.contains?(b, from.username) end) <=
          max_bookings_per_user do
-      "PLAZAS PARA: " <> date = msg.text
-      [date | _] = date |> String.split(" \n")
+      [date_text | _] = msg.text |> String.split("\n") |> tl
+      "PLAZAS PARA: " <> date = date_text
 
       bookings =
         Enum.map(data.bookings, fn b ->
           if b.message_id == msg.message_id, do: Map.put(b, :reply_markup, new_kb), else: b
         end)
 
-      :ets.insert(:chat_data, {chat_id, Map.put(data, :bookings, bookings)})
+      :ets.insert(:chat_data, {:bookings_channel, Map.put(data, :bookings, bookings)})
       kb = Utils.convert_map_to_kb(new_kb)
       edit(context, :inline, Utils.generate_message(date, kb), reply_markup: create_inline(kb))
     end

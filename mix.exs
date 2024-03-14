@@ -23,7 +23,8 @@ defmodule BookingsBot.MixProject do
   def deps do
     [
       {:timex, "~> 3.0"},
-      {:ex_gram, git: "https://github.com/rockneurotiko/ex_gram.git"},
+      {:ex_gram,
+       git: "https://github.com/rockneurotiko/ex_gram.git", branch: "fix_multiple_subtypes"},
       {:tesla, "~> 1.2"},
       {:hackney, "~> 1.12"},
       {:jason, ">= 1.0.0"}
